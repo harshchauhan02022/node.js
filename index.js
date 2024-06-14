@@ -1,12 +1,18 @@
-const express = require('express')
+// index.js
+const express = require('express');
+const dotenv = require('dotenv');
+const userRoutes = require('./routes/userRoutes'); // Correct import path
+const connection = require('./config/db');
 
-const app = express()
-const port = 9000;
+dotenv.config();
 
-app.get('/', (req, res) => {
- res.send('Welcome my new project')
-});
+const app = express();
+const port = process.env.PORT || 9000;
+
+app.use(express.json());
+
+app.use("/api/users", userRoutes);
 
 app.listen(port, () => {
- console.log(`localhost:${port}`);
+ console.log(`Server running at http://localhost:${port}`);
 });
