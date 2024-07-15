@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const db = require('../config/db');
-
 
 const userModel = {
  getAllUsers: (callback) => {
@@ -28,15 +28,55 @@ const userModel = {
    const salt = await bcrypt.genSalt(10);
    const hashPassword = await bcrypt.hash(password, salt);
 
-   db.query('INSERT INTO users (name, phone, email, password) VALUES (?, ?, ?, ?)', [name, phone, email, hashPassword], (error, results) => {
+   // Check if user already exists
+   db.query('SELECT * FROM users WHERE email = ?', [email], (error, results) => {
     if (error) {
      return callback(error, null);
     }
-    return callback(null, { id: results.insertId });
+    if (results.length > 0) {
+     return callback({ message: 'User already exists' }, null);
+    }
+
+    // Insert new user
+    db.query('INSERT INTO users (name, phone, email, password) VALUES (?, ?, ?, ?)', [name, phone, email, hashPassword], (error, results) => {
+     if (error) {
+      return callback(error, null);
+     }
+     return callback(null, { id: results.insertId });
+    });
    });
   } catch (error) {
    return callback(error, null);
   }
+ },
+
+ loginUser: (email, password, callback) => {
+  db.query('SELECT * FROM users WHERE email = ?', [email], (error, results) => {
+   if (error) {
+    return callback(error, null);
+   }
+
+   if (results.length === 0) {
+    return callback(null, null);
+   }
+
+   const user = results[0];
+
+   bcrypt.compare(password, user.password, (bcryptError, isMatch) => {
+    if (bcryptError) {
+     return callback(bcryptError, null);
+    }
+
+    if (!isMatch) {
+     return callback(null, null);
+    }
+
+    const token = jwt.sign({ userId: user.id, email: user.email }, 'yourSecretKey', { expiresIn: '1h' });
+
+    const { password, ...userData } = user;
+    return callback(null, { user: userData, token });
+   });
+  });
  },
 
  deleteUser: (id, callback) => {
@@ -60,6 +100,15 @@ const userModel = {
     return callback(null, results);
    }
   );
+ },
+
+ truncateTable: (callback) => {
+  db.query('TRUNCATE TABLE users', (error, results) => {
+   if (error) {
+    return callback(error, null);
+   }
+   return callback(null, results);
+  });
  }
 };
 
