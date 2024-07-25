@@ -6,7 +6,10 @@ const userRoutes = require('./routes/userRoutes');
 const app = express();
 
 
-app.use(cors());
+app.use(cors({
+ origin: 'http://localhost:3000', // Update with your frontend URL
+ methods: 'GET,POST,PUT,DELETE',
+}));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
