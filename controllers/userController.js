@@ -125,6 +125,49 @@ const userController = {
       }
       return res.status(200).json({ message: "Table truncated successfully" });
     });
+  },
+
+
+  changePassword: (req, res) => {
+    const { userId, oldPassword, newPassword, confirmNewPassword } = req.body;
+
+    const changePasswordSchema = Joi.object({
+      userId: Joi.string().required(),
+      oldPassword: Joi.string().min(6).required(),
+      newPassword: Joi.string().min(6).required(),
+      confirmNewPassword: Joi.string().valid(Joi.ref('newPassword')).required()
+    });
+
+    const { error } = changePasswordSchema.validate({ userId, oldPassword, newPassword, confirmNewPassword });
+    if (error) {
+      return res.status(400).json({ error: error.details[0].message });
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      return res.status(400).json({ error: 'New password and confirm new password do not match' });
+    }
+
+    userModel.verifyOldPassword(userId, oldPassword, (verifyError, isMatch) => {
+      if (verifyError) {
+        return res.status(500).json({ error: 'Internal Server Error' });
+      }
+
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Old password is incorrect' });
+      }
+
+      userModel.changePassword(userId, newPassword, (changeError, results) => {
+        if (changeError) {
+          return res.status(500).json({ error: 'Internal Server Error' });
+        }
+
+        if (results.affectedRows === 0) {
+          return res.status(401).json({ error: 'User not found or password not updated' });
+        }
+
+        res.status(200).json({ message: 'Password updated successfully' });
+      });
+    });
   }
 };
 

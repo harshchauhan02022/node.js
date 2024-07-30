@@ -109,6 +109,33 @@ const userModel = {
    }
    return callback(null, results);
   });
+ },
+
+ verifyOldPassword: (userId, oldPassword, callback) => {
+  db.query('SELECT password FROM users WHERE id = ?', [userId], (error, results) => {
+   if (error) {
+    return callback(error, null);
+   }
+   if (results.length === 0) {
+    return callback(null, false);
+   }
+
+   const user = results[0];
+   bcrypt.compare(oldPassword, user.password, (bcryptError, isMatch) => {
+    if (bcryptError) {
+     return callback(bcryptError, null);
+    }
+    return callback(null, isMatch);
+   });
+  });
+ },
+
+ changePassword: (userId, newPassword, callback) => {
+  const hashedPassword = bcrypt.hashSync(newPassword, 10); // Hash the new password
+  const query = 'UPDATE users SET password = ? WHERE id = ?';
+  db.query(query, [hashedPassword, userId], (error, results) => {
+   callback(error, results);
+  });
  }
 };
 
